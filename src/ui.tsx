@@ -129,7 +129,7 @@ export function Heading({
   as?: "h1" | "h2" | "h3";
 }) {
   const type = {
-    hero: "text-[40px] leading-[1.1] tracking-(--tracking-display) md:text-[56px]",
+    hero: "text-[30px] leading-[1.15] tracking-(--tracking-tighter) md:text-[38px]",
     page: "text-[26px] leading-[1.25] tracking-(--tracking-tighter)",
     section: "text-[17px] leading-[1.35] tracking-tight",
   }[size];
