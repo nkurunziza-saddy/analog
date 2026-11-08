@@ -1,0 +1,8 @@
+{
+  "source": "ci",
+  "updated_at": "2026-11-08T08:00:00Z",
+  "tests": { "total": 24, "passed": 18, "failed": 6, "skipped": 0 },
+  "previous_tests": { "total": 24, "passed": 15, "failed": 9, "skipped": 0 },
+  "diff": { "files_changed": 2, "insertions": 31, "deletions": 4, "test_files_changed": 0 },
+  "failing": ["parse_date handles leap years", "currency rounds half to even"]
+}
