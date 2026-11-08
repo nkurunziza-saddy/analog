@@ -6,7 +6,7 @@ An analog contract streams tokens at a rate set by an AI judge's live, calibrate
 
 ## Try it
 
-**On devnet, no setup.** The program is live at `9TDQyQt9AHQVDbM1qACAD6igWBn1UFzfksuxX5GXoELj`. Run the web app (`pnpm install && pnpm dev`) and open the stream listed on the home page: its earned counter, `p` and every tick, claim and cancel are read straight from devnet.
+**Live, no setup:** [analog.main-95e.workers.dev](https://analog.main-95e.workers.dev). The program runs on Solana devnet at `9TDQyQt9AHQVDbM1qACAD6igWBn1UFzfksuxX5GXoELj`; open the stream on the home page to see its earned counter, `p` and every tick, claim and cancel, read straight from devnet. Connect Phantom or Solflare on devnet to fund a stream of your own.
 
 **The whole loop, from the dev console** (about five minutes, needs a judge API key):
 
@@ -115,6 +115,8 @@ pnpm worker:agent step                         # 4. drive the agent
 | `cheat` | Skip the tests instead of fixing them |
 
 Any real agent can edit `worker/repo` instead; the judge only sees measured test results.
+
+**Deploy the web app.** `cf deploy` builds with the Cloudflare Vite plugin and uploads to Workers static assets (`cloudflare.config.ts`); with several Cloudflare accounts, set `CLOUDFLARE_ACCOUNT_ID`. The dev console and its local APIs exist only under `pnpm dev`.
 
 **Dev console.** With `pnpm dev` running, open `/dev` to do all of the above without a terminal. Paste a hosted Laya (laya-ai.com) or TypeSafe Jev key under *Judge API key*; it's saved to `.env.local` and checked with a free call. Then: start and stop the test runner and the judge (with a tick limit, so metered calls stay counted), trigger every agent command, watch each pipeline stage go live, and see for any tick exactly what the judges read, each answer, the product, the min, the hash and what it pays. The control API exists only on the dev server.
 
