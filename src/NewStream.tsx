@@ -4,7 +4,7 @@ import { useSendTransaction, useWalletConnection } from "@solana/react-hooks";
 import { short } from "./format";
 import { createStreamInstruction, DEFAULT_MINT, PLATFORM_JUDGES, useTokenBalance } from "./platform";
 import { navigate } from "./router";
-import { Button, Card, cn, Detail, DetailList, Empty, fieldClass, Heading, IconWallet, SectionTitle } from "./ui";
+import { Button, Card, cn, Detail, DetailList, Empty, fieldClass, Heading, IconPlus, IconWallet, SectionTitle } from "./ui";
 
 export function NewStream() {
   const { wallet, status } = useWalletConnection();
@@ -180,6 +180,7 @@ function Form({ me }: { me: Address }) {
 
       <div className="flex flex-col gap-2">
         <Button type="submit" variant="accent" size="lg" full loading={isSending}>
+          <IconPlus />
           Fund stream{depositN > 0 ? ` with ${depositN.toLocaleString()} tokens` : ""}
         </Button>
         {txError && <p className="text-[13px] text-negative">{txError}</p>}

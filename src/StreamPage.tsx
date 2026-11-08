@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { address, isAddress } from "@solana/kit";
 import { useSendTransaction, useWalletConnection } from "@solana/react-hooks";
 import { ExplorerLink, short, since, tokens } from "./format";
-import { useActivity, type Activity } from "./platform";
+import { PLATFORM_JUDGES, useActivity, type Activity } from "./platform";
 import {
   cancelInstructions,
   claimInstructions,
@@ -25,6 +25,7 @@ import {
   Heading,
   IconFlask,
   IconPulse,
+  IconWallet,
   Pill,
   SectionTitle,
   type Tone,
@@ -35,9 +36,8 @@ export function StreamPage({ id }: { id: string }) {
   const { stream, error } = useStream(streamAddress);
   const { wallet, status } = useWalletConnection();
   const me = status === "connected" ? wallet?.account.address.toString() : undefined;
-  // The local judge's evidence belongs to one stream; show it only on that stream's page.
-  const localStream = useLocal<{ stream: string } | null>("stream", 10_000);
-  const isLocal = !!localStream && localStream.stream === id;
+  // The local judge reads one evidence feed for every stream it judges; show it on those streams (dev only).
+  const isLocal = import.meta.env.DEV && stream?.data.judgeA === PLATFORM_JUDGES.a;
 
   const role = stream && me === stream.data.payer ? "You pay" : stream && me === stream.data.worker ? "You earn" : null;
 
@@ -161,7 +161,7 @@ function StreamCard({ live }: { live: LiveStream }) {
         <div className="mt-6 flex flex-col gap-2">
           {isWorker && (
             <Button variant="accent" full loading={isSending} disabled={claimable < 1} onClick={() => run("claim")}>
-              Claim {tokens(claimable, mint.decimals, 2)} tokens
+              <IconWallet /> Claim {tokens(claimable, mint.decimals, 2)} tokens
             </Button>
           )}
           {isPayer && !cancelled && !confirmCancel && (

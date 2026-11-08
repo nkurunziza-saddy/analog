@@ -5,7 +5,7 @@ import { short, since, tokens } from "./format";
 import { useMintInfo, useStreams, type StreamRow } from "./platform";
 import { Link } from "./router";
 import { isStale, projectEarned, STATUS_CANCELLED, useNow } from "./stream";
-import { buttonClass, Card, Empty, Heading, IconPulse, Pill, Segmented, type Tone } from "./ui";
+import { buttonClass, Card, Empty, Heading, IconPlay, IconPlus, IconPulse, Pill, Segmented, type Tone } from "./ui";
 
 export function Home() {
   const { wallet, status } = useWalletConnection();
@@ -27,7 +27,7 @@ function YourStreams({ me }: { me: Address }) {
         subtitle="Money that follows the work"
         action={
           <Link href="/new" className={buttonClass({ size: "md" })}>
-            New stream
+            <IconPlus /> New stream
           </Link>
         }
       />
@@ -83,11 +83,11 @@ function Landing() {
         </p>
         <div className="flex flex-wrap gap-2">
           <Link href="/new" className={buttonClass({ size: "lg" })}>
-            Start a stream
+            <IconPlus /> Start a stream
           </Link>
           {rows && rows[0] && (
             <Link href={`/s/${rows[0].address}`} className={buttonClass({ size: "lg", variant: "outline" })}>
-              Watch a live stream
+              <IconPlay /> Watch a live stream
             </Link>
           )}
         </div>

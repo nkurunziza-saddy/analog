@@ -295,29 +295,37 @@ export function Mark({ className }: { className?: string }) {
   );
 }
 
+/** Filled glyphs on a 24px grid, in currentColor. Cut-outs use the even-odd rule. */
 function Icon({ d, className }: { d: string; className?: string }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-      className={cn("size-4 shrink-0", className)}
-    >
+    <svg viewBox="0 0 24 24" fill="currentColor" fillRule="evenodd" clipRule="evenodd" aria-hidden className={cn("size-4 shrink-0", className)}>
       <path d={d} />
     </svg>
   );
 }
 
-export const IconExternal = (p: { className?: string }) => <Icon {...p} d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />;
-export const IconWallet = (p: { className?: string }) => <Icon {...p} d="M4 7a2 2 0 0 1 2-2h12v4M4 7v10a2 2 0 0 0 2 2h14V9H6a2 2 0 0 1-2-2ZM16 14h.01" />;
-export const IconPulse = (p: { className?: string }) => <Icon {...p} d="M3 12h4l3-8 4 16 3-8h4" />;
-export const IconFlask = (p: { className?: string }) => <Icon {...p} d="M9 3h6M10 3v6L4.5 18.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3M7 15h10" />;
-export const IconPlay = (p: { className?: string }) => <Icon {...p} d="M7 4v16l13-8Z" />;
-export const IconStop = (p: { className?: string }) => <Icon {...p} d="M6 6h12v12H6Z" />;
-export const IconCheck = (p: { className?: string }) => <Icon {...p} d="m5 12 5 5 9-10" />;
-export const IconX = (p: { className?: string }) => <Icon {...p} d="M6 6l12 12M18 6 6 18" />;
-export const IconMinus = (p: { className?: string }) => <Icon {...p} d="M6 12h12" />;
+type IconProps = { className?: string };
+export const IconExternal = (p: IconProps) => (
+  <Icon {...p} d="M14 3h6a1 1 0 0 1 1 1v6a1 1 0 1 1-2 0V6.4l-7.3 7.3a1 1 0 0 1-1.4-1.4L17.6 5H14a1 1 0 1 1 0-2ZM5 6h5a1 1 0 1 1 0 2H5v11h11v-5a1 1 0 1 1 2 0v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z" />
+);
+export const IconWallet = (p: IconProps) => (
+  <Icon {...p} d="M5 4h11a2 2 0 0 1 2 2v1H5.5a1 1 0 0 0 0 2H19a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3Zm11.5 10a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z" />
+);
+export const IconPulse = (p: IconProps) => <Icon {...p} d="M13.5 2 4 14h7l-1.5 8L19 10h-7l1.5-8Z" />;
+export const IconFlask = (p: IconProps) => (
+  <Icon {...p} d="M9 2h6a1 1 0 1 1 0 2v5.2l4.9 8.5A2.2 2.2 0 0 1 18 21H6a2.2 2.2 0 0 1-1.9-3.3L9 9.2V4a1 1 0 0 1 0-2Z" />
+);
+export const IconPlay = (p: IconProps) => (
+  <Icon {...p} d="M7 4.6v14.8a1 1 0 0 0 1.5.85l11.9-7.4a1 1 0 0 0 0-1.7L8.5 3.75A1 1 0 0 0 7 4.6Z" />
+);
+export const IconStop = (p: IconProps) => <Icon {...p} d="M7.5 6h9A1.5 1.5 0 0 1 18 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 16.5v-9A1.5 1.5 0 0 1 7.5 6Z" />;
+export const IconPlus = (p: IconProps) => (
+  <Icon {...p} d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 6v3h3a1 1 0 1 1 0 2h-3v3a1 1 0 1 1-2 0v-3H8a1 1 0 1 1 0-2h3V8a1 1 0 1 1 2 0Z" />
+);
+export const IconCheck = (p: IconProps) => (
+  <Icon {...p} d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm4.7 7.7-5.5 5.5a1 1 0 0 1-1.4 0l-2.5-2.5a1 1 0 1 1 1.4-1.4l1.8 1.8 4.8-4.8a1 1 0 1 1 1.4 1.4Z" />
+);
+export const IconX = (p: IconProps) => (
+  <Icon {...p} d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm3.7 12.3a1 1 0 0 1-1.4 1.4L12 13.4l-2.3 2.3a1 1 0 0 1-1.4-1.4l2.3-2.3-2.3-2.3a1 1 0 0 1 1.4-1.4l2.3 2.3 2.3-2.3a1 1 0 0 1 1.4 1.4L13.4 12Z" />
+);
+export const IconMinus = (p: IconProps) => <Icon {...p} d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm4 11H8a1 1 0 1 1 0-2h8a1 1 0 1 1 0 2Z" />;

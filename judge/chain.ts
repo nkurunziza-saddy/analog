@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import {
-  appendTransactionMessageInstruction,
+  appendTransactionMessageInstructions,
   assertIsTransactionWithBlockhashLifetime,
   createKeyPairSignerFromBytes,
   createSolanaRpc,
@@ -60,14 +60,14 @@ export function loadJudgeKeys(): Promise<[KeyPairSigner, KeyPairSigner]> {
   ]);
 }
 
-/** Builds, signs (every signer referenced by the instruction) and confirms one transaction. */
-export async function send(feePayer: KeyPairSigner, ix: Instruction): Promise<string> {
+/** Builds, signs (every signer the instructions reference) and confirms one transaction. */
+export async function send(feePayer: KeyPairSigner, ix: Instruction | Instruction[]): Promise<string> {
   const { value: blockhash } = await rpc.getLatestBlockhash().send();
   const message = pipe(
     createTransactionMessage({ version: 0 }),
     (m) => setTransactionMessageFeePayerSigner(feePayer, m),
     (m) => setTransactionMessageLifetimeUsingBlockhash(blockhash, m),
-    (m) => appendTransactionMessageInstruction(ix, m),
+    (m) => appendTransactionMessageInstructions(Array.isArray(ix) ? ix : [ix], m),
   );
   const signed = await signTransactionMessageWithSigners(message);
   assertIsTransactionWithBlockhashLifetime(signed);
