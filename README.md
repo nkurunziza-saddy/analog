@@ -13,13 +13,13 @@ worker/repo ──tests──▶ worker/watch ──evidence.json──▶ judge
                                               Solana program (Anchor, devnet)
                                                           │  pays rate_max × p, capped
                                                           ▼
-                                                dashboard (React + Vite)
+                                                web app (React + Vite)
 ```
 
 1. **Worker.** An agent fixes failing tests in `worker/repo`. The watcher runs the real test suite every 2 s and writes what it measured (pass counts, skipped tests, diff size) to `judge/evidence.json`. The agent's own notes are passed through, labelled untrusted.
 2. **Judges.** Every 3 s the judge service turns the evidence into a few plain sentences and asks two judges narrow yes/no (`noul`) questions about it ("Do all of the tests pass?", "Are zero tests skipped?"). Each judge's `p` is the product of its answers, since every condition must hold; the posted `p` is the lower of the two judges. The agent's own notes are shown on the dashboard but never sent to the judges.
 3. **Program.** `post_tick(p_bps, input_hash)` must be signed by both judge keys. It credits the time since the last tick at the previous `p`, stores the new `p`, and logs the sha256 of exactly what the judges saw. The worker can claim at any time; the payer can cancel at any time and gets back only what was not yet earned.
-4. **Dashboard.** Shows the live earned counter, `p`, the evidence the judges see, and every tick with its hash and transaction.
+4. **Web app.** The home page explains Analog and lists every stream on devnet; with a wallet connected it shows the streams you pay and earn from. `/new` funds a stream from your wallet with the platform's two judges. `/s/<stream>` shows the live earned counter, `p`, Claim and Cancel, and an activity feed of ticks, claims and cancels decoded from the stream's devnet transactions, so it works without the local judge.
 
 ### Why the judge can't run off with the money
 
@@ -90,7 +90,7 @@ solana transfer <judge A address> 0.2 --allow-unfunded-recipient   # judge A pay
 ```sh
 pnpm worker:agent reset && pnpm worker:watch   # 1. real tests -> judge/evidence.json
 pnpm judge                                     # 2. ticks every 3 s (first run downloads Laya, ~1.7 GB)
-pnpm dev                                       # 3. dashboard on http://localhost:5173
+pnpm dev                                       # 3. web app on http://localhost:5173 (/dev for the console)
 pnpm worker:agent step                         # 4. drive the agent
 ```
 
@@ -102,6 +102,8 @@ pnpm worker:agent step                         # 4. drive the agent
 | `cheat` | Skip the tests instead of fixing them |
 
 Any real agent can edit `worker/repo` instead; the judge only sees measured test results.
+
+**Dev console.** With `pnpm dev` running, open `/dev` to do all of the above without a terminal: start and stop the test runner and the judge (with a tick limit, so metered calls stay counted), trigger every agent command, watch each pipeline stage go live, and see for any tick exactly what the judges read, each answer, the product, the min, the hash and what it pays. The control API exists only on the dev server.
 
 **Judges.** The default pair is local Laya asked two different question sets (`JUDGES=laya,laya-alt`). For hosted Laya, put `JEV_URL=https://api.laya-ai.com/v1/systemone`, `JEV_MODEL=laya` and `JEV_API_KEY` in `.env.local` and run `JUDGES=laya-api,laya-api pnpm judge` (two calls per tick). With a TypeSafe key, `JEV_API_KEY=… JUDGES=jev,laya pnpm judge` makes Jev judge A. `DRY_RUN=1 pnpm judge` judges without posting. `LAYA_MODEL_DIR` points at a local ONNX bundle instead of downloading.
 
@@ -134,6 +136,7 @@ Payment streaming (Zebec, Streamflow, Sablier, Superfluid) pays per second at a 
 anchor/programs/vault/   Solana program and LiteSVM tests
 judge/                   judge service: judges, tick loop, create-stream
 worker/                  demo repo, test watcher, scripted agent
-src/                     dashboard; src/generated is the Codama client
+src/                     web app (Home, NewStream, StreamPage, DevPage); src/generated is the Codama client
 vite.local-api.ts        dev-only API serving the judge's local files to the dashboard
+vite.dev-api.ts          dev-only control API behind the /dev console
 ```

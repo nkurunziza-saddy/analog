@@ -12,7 +12,9 @@ const WATCH_MS = Number(process.env.WATCH_MS ?? 2_000);
 
 type Tests = { total: number; passed: number; failed: number; skipped: number };
 
-function runTests(): { tests: Tests; failing: string[] } {
+type Result = { name: string; status: "pass" | "fail" | "skip" };
+
+function runTests(): { tests: Tests; failing: string[]; results: Result[] } {
   const res = spawnSync(process.execPath, ["--test", "--test-reporter=tap", "test/"], {
     cwd: REPO_DIR,
     encoding: "utf8",
@@ -21,6 +23,11 @@ function runTests(): { tests: Tests; failing: string[] } {
   const out = res.stdout ?? "";
   const count = (key: string) => Number(out.match(new RegExp(`^# ${key} (\\d+)`, "m"))?.[1] ?? 0);
   const failing = [...out.matchAll(/^not ok \d+ - (.+)$/gm)].map((m) => m[1].trim());
+  // Top-level TAP lines only: "ok 1 - name", "not ok 2 - name", "ok 3 - name # SKIP".
+  const results: Result[] = [...out.matchAll(/^(not ok|ok) \d+ - (.+?)(?:\s+# (SKIP|TODO)\b.*)?$/gm)].map((m) => ({
+    name: m[2].trim(),
+    status: m[3] ? "skip" : m[1] === "ok" ? "pass" : "fail",
+  }));
   return {
     tests: {
       total: count("tests"),
@@ -29,6 +36,7 @@ function runTests(): { tests: Tests; failing: string[] } {
       skipped: count("skipped") + count("todo"),
     },
     failing,
+    results,
   };
 }
 
@@ -98,7 +106,7 @@ let current: Tests | null = null;
 let previous: Tests | null = null;
 let lastLine = "";
 for (;;) {
-  const { tests, failing } = runTests();
+  const { tests, failing, results } = runTests();
   if (current && JSON.stringify(current) !== JSON.stringify(tests)) previous = current;
   current = tests;
   const evidence = {
@@ -108,6 +116,7 @@ for (;;) {
     previous_tests: previous ?? tests,
     diff: diffStats(),
     failing: failing.slice(0, 6),
+    results,
     agent_note: { untrusted: true, text: lastAgentNote() },
   };
   writeAtomic(EVIDENCE_FILE, JSON.stringify(evidence, null, 2));

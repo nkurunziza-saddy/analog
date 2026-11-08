@@ -5,6 +5,18 @@
     <title>Analog</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="preload" href="/fonts/inter.woff2" as="font" type="font/woff2" crossorigin />
+    <script>
+      // Follow the system theme, set before first paint so there's no flash.
+      (function () {
+        var m = window.matchMedia("(prefers-color-scheme: dark)");
+        function apply() {
+          document.documentElement.classList.toggle("dark", m.matches);
+        }
+        apply();
+        m.addEventListener("change", apply);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

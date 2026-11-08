@@ -1,73 +1,166 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: oklch(0.145 0 0);
-  --border-strong: oklch(0.839 0.0187 78.23);
-  --border-low: oklch(0.927 0.0122 96.43);
-  --accent: oklch(0 0 0);
-  --muted: #3a3a3a;
-  --cream: oklch(0.9553 0.0029 84.56);
-  --card: #ffffff;
-  --card-foreground: oklch(0.145 0 0);
-  --radius: 0.625rem;
-  --font-sans: system-ui, sans-serif;
-  --font-mono: ui-monospace, monospace;
-  --accent-solid: oklch(0.55 0.14 255);
-  --accent-contrast: #ffffff;
-  --status-ok: oklch(0.52 0.13 150);
-  --status-warn: oklch(0.55 0.14 55);
+/* Design system ported from block (products/block/apps/web/src/styles.css), default look.
+   The script in index.html puts `dark` on <html> from the system setting before first paint. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/inter.woff2") format("woff2-variations");
+  font-weight: 100 900;
+  font-display: swap;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --border-strong: oklch(1 0 0 / 0.12);
-    --border-low: oklch(1 0 0 / 0.08);
-    --accent: oklch(0.922 0 0);
-    --muted: oklch(0.75 0.01 260);
-    --cream: oklch(0.22 0.009 70.82);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --accent-solid: oklch(0.7 0.14 255);
-    --accent-contrast: oklch(0.145 0 0);
-    --status-ok: oklch(0.74 0.14 150);
-    --status-warn: oklch(0.76 0.13 65);
-  }
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Roboto Mono", Menlo, monospace;
+
+  --tracking-display: -0.035em;
+  --tracking-tighter: -0.02em;
+  --tracking-tight: -0.01em;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-ui: cubic-bezier(0.4, 0, 0.2, 1);
+
+  --container-site: 1120px;
+
+  --animate-spin-slow: spin 0.8s linear infinite;
 }
 
+/* One accent, grayscale for everything else. */
 @theme inline {
-  --color-background: var(--background);
-  --color-bg1: var(--background);
-  --color-foreground: var(--foreground);
-  --color-cream: var(--cream);
-  --color-border: var(--border-strong);
-  --color-border-strong: var(--border-strong);
-  --color-border-low: var(--border-low);
-  --color-primary: var(--accent);
-  --color-muted: var(--muted);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-accent-solid: var(--accent-solid);
-  --color-accent-contrast: var(--accent-contrast);
-  --color-status-ok: var(--status-ok);
-  --color-status-warn: var(--status-warn);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-mono);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --color-bg: var(--bg);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-line: var(--line);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-raised: var(--raised);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
+  --color-cta: var(--cta);
+  --color-cta-fg: var(--cta-fg);
+
+  --shadow-raised: var(--shadow-raised-v);
+  --shadow-card: var(--shadow-card-v);
 }
 
 @layer base {
+  :root {
+    --bg: oklch(0.995 0.001 260);
+    --fg: oklch(0.2 0.006 260);
+    --fg-muted: oklch(0.5 0.01 260);
+    --fg-subtle: oklch(0.66 0.008 260);
+    --line: color-mix(in oklch, var(--fg) 9%, transparent);
+    --surface: color-mix(in oklch, var(--fg) 3.5%, transparent);
+    --surface-2: color-mix(in oklch, var(--fg) 6%, transparent);
+    --surface-3: color-mix(in oklch, var(--fg) 10%, transparent);
+    --raised: var(--bg);
+    --accent: #0052ff;
+    --accent-fg: #ffffff;
+    --positive: oklch(0.6 0.17 148);
+    --negative: oklch(0.58 0.21 27);
+    --cta: var(--fg);
+    --cta-fg: var(--bg);
+
+    --shadow-raised-v: 0 1px 2px rgb(0 0 0 / 0.08), 0 0 0 0.5px rgb(0 0 0 / 0.05);
+    --shadow-card-v: 0 0 0 1px rgb(0 0 0 / 0.035), 0 1px 2px rgb(0 0 0 / 0.04);
+    color-scheme: light;
+  }
+
+  .dark {
+    --bg: oklch(0.14 0.004 260);
+    --fg: oklch(0.93 0.003 260);
+    --fg-muted: oklch(0.66 0.008 260);
+    --fg-subtle: oklch(0.5 0.008 260);
+    --line: color-mix(in oklch, var(--fg) 10%, transparent);
+    --surface: color-mix(in oklch, var(--fg) 4.5%, transparent);
+    --surface-2: color-mix(in oklch, var(--fg) 7.5%, transparent);
+    --surface-3: color-mix(in oklch, var(--fg) 12%, transparent);
+    --raised: color-mix(in oklab, var(--fg) 7%, var(--bg));
+    --accent: #578bfa;
+    --accent-fg: #0a0b0d;
+    --positive: oklch(0.78 0.19 145);
+    --negative: oklch(0.7 0.19 22);
+
+    --shadow-raised-v: 0 0 0 1px rgb(255 255 255 / 0.08);
+    --shadow-card-v: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 0 0 1px rgb(255 255 255 / 0.03);
+    color-scheme: dark;
+  }
+
   * {
-    @apply border-border outline-transparent;
+    border-color: var(--line);
+  }
+
+  html {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-synthesis-weight: none;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    scrollbar-color: color-mix(in oklch, var(--fg) 16%, transparent) transparent;
+    scrollbar-width: thin;
   }
 
   body {
-    @apply bg-bg1 text-foreground antialiased;
-    font-family: var(--font-sans);
-    color-scheme: light dark;
+    min-height: 100svh;
+    font-size: 0.9375rem;
+    line-height: 1.45;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklch, var(--accent) 22%, transparent);
+  }
+
+  input::placeholder {
+    color: var(--fg-subtle);
+  }
+}
+
+/* Numbers never jitter while they update. */
+@utility nums {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+
+/* Centered column for every page. */
+@utility page {
+  margin-inline: auto;
+  width: 100%;
+  max-width: var(--container-site);
+  padding-inline: 1.25rem;
+  @media (width >= 40rem) {
+    padding-inline: 1.5rem;
+  }
+}
+
+/* Rows that arrive (a new tick) settle into place once. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@utility rise {
+  animation: rise 260ms var(--ease-out) both;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
   }
 }
