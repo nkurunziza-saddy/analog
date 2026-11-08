@@ -3,7 +3,6 @@ import { address, isAddress } from "@solana/kit";
 import { useSendTransaction, useWalletConnection } from "@solana/react-hooks";
 import { ExplorerLink, short, since, tokens } from "./format";
 import { useActivity, type Activity } from "./platform";
-import { Link } from "./router";
 import {
   cancelInstructions,
   claimInstructions,
@@ -23,6 +22,7 @@ import {
   Detail,
   DetailList,
   Empty,
+  Heading,
   IconFlask,
   IconPulse,
   Pill,
@@ -43,15 +43,12 @@ export function StreamPage({ id }: { id: string }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          <Link href="/" className="text-[13px] text-fg-muted hover:text-fg">
-            ← Streams
-          </Link>
-          <p className="mt-1 truncate font-mono text-[17px] font-medium tracking-tight">{short(id, 6, 6)}</p>
-        </div>
-        {role && <Pill tone="accent">{role}</Pill>}
-      </header>
+      <Heading
+        size="page"
+        title="Stream"
+        subtitle={<span className="font-mono text-[22px]">{short(id, 6, 6)}</span>}
+        action={role && <Pill tone="accent">{role}</Pill>}
+      />
 
       {!streamAddress ? (
         <Empty icon={<IconPulse />} title="Not a stream address">
@@ -246,7 +243,7 @@ function EvidenceSection() {
 
   return (
     <section>
-      <SectionTitle>What the judges see</SectionTitle>
+      <SectionTitle subtitle="Measured by the test runner, live from the local judge">What the judges see</SectionTitle>
       {!evidence || !t ? (
         <Empty icon={<IconFlask />} title="No evidence yet">
           Start the test runner with pnpm worker:watch, or from the dev console.
@@ -306,7 +303,7 @@ function ActivitySection({ live }: { live: LiveStream }) {
 
   return (
     <section>
-      <SectionTitle>Activity on devnet</SectionTitle>
+      <SectionTitle subtitle="Ticks, claims and cancels, read from the chain">Activity</SectionTitle>
       {items === null ? (
         <Empty icon={<IconPulse />} title="Reading activity">
           Loading this stream's transactions from devnet.

@@ -3,8 +3,8 @@ import { address as toAddress, isAddress, type Address } from "@solana/kit";
 import { useSendTransaction, useWalletConnection } from "@solana/react-hooks";
 import { short } from "./format";
 import { createStreamInstruction, DEFAULT_MINT, PLATFORM_JUDGES, useTokenBalance } from "./platform";
-import { Link, navigate } from "./router";
-import { Button, Card, cn, Detail, DetailList, Empty, fieldClass, IconWallet, SectionTitle } from "./ui";
+import { navigate } from "./router";
+import { Button, Card, cn, Detail, DetailList, Empty, fieldClass, Heading, IconWallet, SectionTitle } from "./ui";
 
 export function NewStream() {
   const { wallet, status } = useWalletConnection();
@@ -12,15 +12,7 @@ export function NewStream() {
 
   return (
     <div className="mx-auto flex w-full max-w-[560px] flex-col gap-6">
-      <header>
-        <Link href="/" className="text-[13px] text-fg-muted hover:text-fg">
-          ← Streams
-        </Link>
-        <p className="mt-1 text-[19px] font-medium tracking-tight">New stream</p>
-        <p className="mt-1 text-[14px] text-fg-muted">
-          Deposit tokens for a piece of work. They stream to the worker at the rate the judges believe it's on spec.
-        </p>
-      </header>
+      <Heading size="page" title="New stream" subtitle="Pay a worker by the second, as the work is judged" />
       {me ? (
         <Form me={me} />
       ) : (
@@ -174,7 +166,7 @@ function Form({ me }: { me: Address }) {
       </Card>
 
       <section>
-        <SectionTitle>Who judges</SectionTitle>
+        <SectionTitle subtitle="Both sign every tick; the lower score is paid">Who judges</SectionTitle>
         <DetailList>
           <Detail label="Evidence">Test-suite results from CI</Detail>
           <Detail label="Judge A" mono>
@@ -183,7 +175,6 @@ function Form({ me }: { me: Address }) {
           <Detail label="Judge B" mono>
             {short(PLATFORM_JUDGES.b, 6, 6)}
           </Detail>
-          <Detail label="Rule">Both sign every tick; the lower p is paid</Detail>
         </DetailList>
       </section>
 

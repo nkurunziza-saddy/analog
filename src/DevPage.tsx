@@ -15,6 +15,7 @@ import {
   IconStop,
   IconX,
   Pill,
+  Heading,
   SectionTitle,
   Segmented,
   type Tone,
@@ -53,7 +54,7 @@ type Status = {
   stream: { stream: string } | null;
   promise: { promise: string; questions: { a: Record<string, Question>; b: Record<string, Question> } } | null;
   ticks: DevTick[];
-  hasApiKey: boolean;
+  apiKey: { set: boolean; last4: string; url: string; model: string; provider: string };
   now: number;
 };
 
@@ -107,13 +108,12 @@ export function DevPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-[13px] text-fg-muted">Dev console</p>
-          <p className="text-[19px] font-medium tracking-tight">Run the pipeline and see how p is decided</p>
-        </div>
-        {status && <ProcPills status={status} />}
-      </header>
+      <Heading
+        size="page"
+        title="Dev console"
+        subtitle="Run the pipeline and see how every payment is decided"
+        action={status && <ProcPills status={status} />}
+      />
 
       {offline && (
         <Empty icon={<IconPulse />} title="The dev API isn't reachable">
@@ -126,7 +126,10 @@ export function DevPage() {
           <Pipeline status={status} now={now} stream={stream} />
           <div className="grid gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start lg:gap-10">
             <div className="flex flex-col gap-8">
-              <Controls status={status} reload={reload} now={now} />
+              <ApiKeyCard status={status} reload={reload} />
+              <AgentCard status={status} reload={reload} />
+              <RunnerCard status={status} reload={reload} now={now} />
+              <JudgeCard status={status} reload={reload} />
               <Tests status={status} />
             </div>
             <div className="flex flex-col gap-8">
@@ -217,7 +220,7 @@ function Pipeline({ status, now, stream }: { status: Status; now: number; stream
 
   return (
     <section>
-      <SectionTitle>Workflow</SectionTitle>
+      <SectionTitle subtitle="From the agent's edit to the money it moves">Workflow</SectionTitle>
       <ol className="grid gap-2 rounded-[20px] bg-surface p-1 sm:grid-cols-3 lg:grid-cols-6">
         {stages.map((st, i) => (
           <li key={st.title} className="flex min-w-0 flex-col gap-2 rounded-2xl bg-raised p-3.5 shadow-card">
@@ -251,27 +254,10 @@ const AGENT_ACTIONS: { cmd: string; label: string }[] = [
   { cmd: "cheat", label: "Skip tests" },
 ];
 
-function Row({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
-  return (
-    <div className="flex flex-col gap-3 py-4 first:pt-1 last:pb-1">
-      <div>
-        <p className="text-[14px] font-medium">{title}</p>
-        {hint && <p className="mt-0.5 text-[13px] text-fg-muted">{hint}</p>}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function Controls({ status, reload, now }: { status: Status; reload: () => void; now: number }) {
+/** Runs a dev API call, holding which button is busy and the last error. */
+function useAct(reload: () => void) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [stepSeconds, setStepSeconds] = useState(20);
-  const [judges, setJudges] = useState("laya-api,laya-api");
-  const [maxTicks, setMaxTicks] = useState(3);
-  const [tickSeconds, setTickSeconds] = useState(3);
-  const [dryRun, setDryRun] = useState(false);
-
   async function act(key: string, fn: () => Promise<{ error?: string }>) {
     setBusy(key);
     setError(null);
@@ -285,153 +271,300 @@ function Controls({ status, reload, now }: { status: Status; reload: () => void;
       reload();
     }
   }
+  return { busy, error, act };
+}
 
-  const { watch, judge, auto } = status.procs;
-  const evAge = status.evidence ? now - Date.parse(status.evidence.updated_at) / 1000 : Infinity;
-  const externalWatch = !watch.running && evAge < 6;
-  const paid = judges.includes("api") || judges.includes("jev");
+const PROVIDER_OPTIONS = [
+  { value: "laya-ai", label: "Hosted Laya" },
+  { value: "typesafe", label: "TypeSafe Jev" },
+  { value: "custom", label: "Other" },
+] as const;
+type Provider = (typeof PROVIDER_OPTIONS)[number]["value"];
+
+function ApiKeyCard({ status, reload }: { status: Status; reload: () => void }) {
+  const saved = status.apiKey;
+  const [editing, setEditing] = useState(!saved.set);
+  const [provider, setProvider] = useState<Provider>(saved.set ? (saved.provider as Provider) : "laya-ai");
+  const [key, setKey] = useState("");
+  const [url, setUrl] = useState(saved.provider === "custom" ? saved.url : "");
+  const [model, setModel] = useState(saved.provider === "custom" ? saved.model : "");
+  const [check, setCheck] = useState<{ ok: boolean; message: string } | null>(null);
+  const { busy, error, act } = useAct(reload);
+
+  async function save() {
+    setCheck(null);
+    await act("save", async () => {
+      const r = await post("/key", { provider, key, url, model });
+      if (!r.error) {
+        setKey("");
+        setEditing(false);
+      }
+      return r;
+    });
+  }
+
+  async function runCheck() {
+    setCheck(null);
+    await act("check", async () => {
+      const r = (await post("/key/check", {})) as { ok?: boolean; message?: string; error?: string };
+      if (!r.error) setCheck({ ok: !!r.ok, message: r.message ?? "" });
+      return r;
+    });
+  }
 
   return (
     <section>
-      <SectionTitle>Controls</SectionTitle>
-      <Card surfaceClassName="px-4 py-3">
-        <div className="divide-y divide-line">
-          <Row title="Agent" hint="Edits the demo repo for real. The judges only see the test results.">
-            <div className="flex flex-wrap gap-1.5">
-              {AGENT_ACTIONS.map((a) => (
-                <Button
-                  key={a.cmd}
-                  size="sm"
-                  variant="secondary"
-                  loading={busy === a.cmd}
-                  disabled={(busy !== null && busy !== a.cmd) || auto.running}
-                  onClick={() => act(a.cmd, () => post("/agent", { cmd: a.cmd }))}
-                >
-                  {a.label}
+      <SectionTitle subtitle="Used by the hosted judges. Saved to .env.local on this machine.">Judge API key</SectionTitle>
+      <Card surfaceClassName="flex flex-col gap-4 p-4">
+        {!editing && saved.set ? (
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[14px] font-medium">
+                  {PROVIDER_OPTIONS.find((p) => p.value === saved.provider)?.label ?? "Other"}
+                  <span className="font-mono text-[13px] font-normal text-fg-muted"> ···{saved.last4}</span>
+                </p>
+                <p className="truncate font-mono text-[12px] text-fg-subtle">
+                  {saved.model} · {saved.url.replace(/^https:\/\//, "")}
+                </p>
+              </div>
+              <div className="flex gap-1.5">
+                <Button size="sm" variant="secondary" loading={busy === "check"} onClick={runCheck}>
+                  Check key
                 </Button>
-              ))}
+                <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
+                  Change
+                </Button>
+              </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {auto.running ? (
-                <Button size="sm" variant="outline" onClick={() => act("auto", () => post("/proc/stop", { name: "auto" }))}>
-                  <IconStop /> Stop auto-fix
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={busy !== null}
-                  onClick={() => act("auto", () => post("/proc/start", { name: "auto", opts: { stepSeconds } }))}
-                >
-                  <IconPlay /> Auto-fix
-                </Button>
-              )}
-              <label className="flex items-center gap-2 text-[13px] whitespace-nowrap text-fg-muted">
-                one fix every
-                <NumberField value={stepSeconds} onChange={setStepSeconds} min={3} max={120} disabled={auto.running} />
-                seconds
-              </label>
-            </div>
-          </Row>
-
-          <Row
-            title="Test runner"
-            hint={externalWatch ? "Already running in a terminal. Results are fresh." : "Runs the real tests every 2 seconds."}
-          >
-            <div>
-              {watch.running ? (
-                <Button size="sm" variant="outline" onClick={() => act("watch", () => post("/proc/stop", { name: "watch" }))}>
-                  <IconStop /> Stop test runner
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  variant={externalWatch ? "outline" : "primary"}
-                  disabled={busy !== null || externalWatch}
-                  onClick={() => act("watch", () => post("/proc/start", { name: "watch" }))}
-                >
-                  <IconPlay /> Start test runner
-                </Button>
-              )}
-            </div>
-          </Row>
-
-          <Row
-            title="Judge"
-            hint={
-              paid
-                ? `Each tick makes 2 metered calls. This run uses ${maxTicks === 0 ? "calls until you stop it" : `${maxTicks * 2} calls`}.`
-                : "Local Laya is free and downloads about 1.7 GB on first run."
-            }
-          >
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <label className="col-span-2 flex flex-col gap-1.5 text-[13px] text-fg-muted">
-                Judges
-                <select
-                  value={judges}
-                  onChange={(e) => setJudges(e.target.value)}
-                  disabled={judge.running}
-                  className={fieldClass}
-                >
-                  <option value="laya-api,laya-api">Hosted Laya × 2</option>
-                  <option value="laya,laya-alt">Local Laya × 2</option>
-                  <option value="jev,laya">Jev + local Laya</option>
-                  <option value="jev,laya-api">Jev + hosted Laya</option>
-                </select>
-              </label>
-              <label className="flex flex-col gap-1.5 text-[13px] text-fg-muted">
-                Ticks
-                <NumberField value={maxTicks} onChange={setMaxTicks} min={0} max={500} disabled={judge.running} wide />
-              </label>
-              <label className="flex flex-col gap-1.5 text-[13px] text-fg-muted">
-                Every (s)
-                <NumberField value={tickSeconds} onChange={setTickSeconds} min={2} max={60} disabled={judge.running} wide />
-              </label>
-            </div>
-            <label className="flex items-center gap-2 text-[13px] text-fg-muted">
-              <input
-                type="checkbox"
-                checked={dryRun}
-                onChange={(e) => setDryRun(e.target.checked)}
-                disabled={judge.running}
-                className="size-4 accent-(--accent)"
-              />
-              Dry run: judge without posting on-chain
-            </label>
-            {paid && !status.hasApiKey && (
-              <p className="text-[13px] text-negative">No JEV_API_KEY in .env.local, so the judge can't start.</p>
+            {check && (
+              <Pill tone={check.ok ? "positive" : "negative"} className="self-start">
+                {check.ok ? <IconCheck className="size-3" /> : <IconX className="size-3" />}
+                {check.message}
+              </Pill>
             )}
-            <div className="flex flex-wrap items-center gap-3">
-              {judge.running ? (
-                <Button size="md" variant="outline" onClick={() => act("judge", () => post("/proc/stop", { name: "judge" }))}>
-                  <IconStop /> Stop judge
+          </>
+        ) : (
+          <form
+            className="flex flex-col gap-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              save();
+            }}
+          >
+            <Segmented size="sm" value={provider} onChange={setProvider} options={[...PROVIDER_OPTIONS]} />
+            <input
+              type="password"
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              placeholder={provider === "typesafe" ? "TypeSafe API key" : provider === "laya-ai" ? "laya-ai.com API key" : "API key"}
+              autoComplete="off"
+              spellCheck={false}
+              className={cn(fieldClass, "font-mono text-[13px]")}
+            />
+            {provider === "custom" && (
+              <div className="grid gap-3 sm:grid-cols-[2fr_1fr]">
+                <input
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://…/v1/systemone"
+                  spellCheck={false}
+                  className={cn(fieldClass, "font-mono text-[13px]")}
+                />
+                <input
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  placeholder="Model"
+                  spellCheck={false}
+                  className={cn(fieldClass, "font-mono text-[13px]")}
+                />
+              </div>
+            )}
+            <p className="text-[13px] text-fg-muted">
+              {provider === "laya-ai"
+                ? "Laya through api.laya-ai.com. Each tick makes two calls."
+                : provider === "typesafe"
+                  ? "Jev through api.typesafe.ai. Each tick makes two calls."
+                  : "Any endpoint that speaks the system_one API: state and questions in, answers out."}
+            </p>
+            <div className="flex gap-1.5">
+              <Button type="submit" size="sm" variant="primary" loading={busy === "save"} disabled={key.trim().length < 8}>
+                Save key
+              </Button>
+              {saved.set && (
+                <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
+                  Keep the saved key
                 </Button>
-              ) : (
-                <Button
-                  size="md"
-                  variant="accent"
-                  loading={busy === "judge"}
-                  disabled={busy !== null && busy !== "judge"}
-                  onClick={() =>
-                    act("judge", () =>
-                      post("/proc/start", {
-                        name: "judge",
-                        opts: { judges, maxTicks, tickMs: tickSeconds * 1000, dryRun },
-                      }),
-                    )
-                  }
-                >
-                  <IconPlay />
-                  {maxTicks === 0 ? "Start judge" : `Run ${maxTicks} ${maxTicks === 1 ? "tick" : "ticks"}`}
-                </Button>
-              )}
-              {!judge.running && judge.exitCode !== null && judge.exitCode !== 0 && (
-                <span className="text-[13px] text-negative">Judge exited with code {judge.exitCode}. Its log has why.</span>
               )}
             </div>
-          </Row>
+          </form>
+        )}
+        {error && <p className="text-[13px] text-negative">{error}</p>}
+      </Card>
+    </section>
+  );
+}
+
+function AgentCard({ status, reload }: { status: Status; reload: () => void }) {
+  const [stepSeconds, setStepSeconds] = useState(20);
+  const { busy, error, act } = useAct(reload);
+  const auto = status.procs.auto;
+  return (
+    <section>
+      <SectionTitle subtitle="Edits the demo repo for real. The judges only see the test results.">Agent</SectionTitle>
+      <Card surfaceClassName="flex flex-col gap-3 p-4">
+        <div className="flex flex-wrap gap-1.5">
+          {AGENT_ACTIONS.map((a) => (
+            <Button
+              key={a.cmd}
+              size="sm"
+              variant="secondary"
+              loading={busy === a.cmd}
+              disabled={(busy !== null && busy !== a.cmd) || auto.running}
+              onClick={() => act(a.cmd, () => post("/agent", { cmd: a.cmd }))}
+            >
+              {a.label}
+            </Button>
+          ))}
         </div>
-        {error && <p className="pb-1 text-[13px] text-negative">{error}</p>}
+        <div className="flex flex-wrap items-center gap-2">
+          {auto.running ? (
+            <Button size="sm" variant="outline" onClick={() => act("auto", () => post("/proc/stop", { name: "auto" }))}>
+              <IconStop /> Stop auto-fix
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy !== null}
+              onClick={() => act("auto", () => post("/proc/start", { name: "auto", opts: { stepSeconds } }))}
+            >
+              <IconPlay /> Auto-fix
+            </Button>
+          )}
+          <label className="flex items-center gap-2 text-[13px] whitespace-nowrap text-fg-muted">
+            one fix every
+            <NumberField value={stepSeconds} onChange={setStepSeconds} min={3} max={120} disabled={auto.running} />
+            seconds
+          </label>
+        </div>
+        {error && <p className="text-[13px] text-negative">{error}</p>}
+      </Card>
+    </section>
+  );
+}
+
+function RunnerCard({ status, reload, now }: { status: Status; reload: () => void; now: number }) {
+  const { busy, error, act } = useAct(reload);
+  const watch = status.procs.watch;
+  const evAge = status.evidence ? now - Date.parse(status.evidence.updated_at) / 1000 : Infinity;
+  const external = !watch.running && evAge < 6;
+  return (
+    <section>
+      <SectionTitle
+        subtitle={external ? "Already running in a terminal." : "Runs the real tests every 2 seconds."}
+      >
+        Test runner
+      </SectionTitle>
+      <Card surfaceClassName="flex flex-col gap-3 p-4">
+        <div>
+          {watch.running ? (
+            <Button size="sm" variant="outline" onClick={() => act("watch", () => post("/proc/stop", { name: "watch" }))}>
+              <IconStop /> Stop test runner
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              variant={external ? "outline" : "primary"}
+              disabled={busy !== null || external}
+              onClick={() => act("watch", () => post("/proc/start", { name: "watch" }))}
+            >
+              <IconPlay /> Start test runner
+            </Button>
+          )}
+        </div>
+        {error && <p className="text-[13px] text-negative">{error}</p>}
+      </Card>
+    </section>
+  );
+}
+
+function JudgeCard({ status, reload }: { status: Status; reload: () => void }) {
+  const { busy, error, act } = useAct(reload);
+  const [judges, setJudges] = useState("laya-api,laya-api");
+  const [maxTicks, setMaxTicks] = useState(3);
+  const [tickSeconds, setTickSeconds] = useState(3);
+  const [dryRun, setDryRun] = useState(false);
+  const judge = status.procs.judge;
+  const hosted = judges.split(",").filter((j) => j === "laya-api").length;
+  const missingKey = hosted > 0 && !status.apiKey.set;
+
+  return (
+    <section>
+      <SectionTitle
+        subtitle={
+          hosted > 0
+            ? `${hosted} hosted ${hosted === 1 ? "call" : "calls"} per tick. This run uses ${maxTicks === 0 ? "calls until stopped" : maxTicks * hosted}.`
+            : "Local Laya is free; it downloads about 1.7 GB on first run."
+        }
+      >
+        Judge
+      </SectionTitle>
+      <Card surfaceClassName="flex flex-col gap-4 p-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <label className="col-span-2 flex flex-col gap-1.5 text-[13px] text-fg-muted">
+            Judges
+            <select value={judges} onChange={(e) => setJudges(e.target.value)} disabled={judge.running} className={fieldClass}>
+              <option value="laya-api,laya-api">Hosted × 2</option>
+              <option value="laya-api,laya">Hosted + local Laya</option>
+              <option value="laya,laya-alt">Local Laya × 2</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1.5 text-[13px] text-fg-muted">
+            Ticks
+            <NumberField value={maxTicks} onChange={setMaxTicks} min={0} max={500} disabled={judge.running} wide />
+          </label>
+          <label className="flex flex-col gap-1.5 text-[13px] text-fg-muted">
+            Every (s)
+            <NumberField value={tickSeconds} onChange={setTickSeconds} min={2} max={60} disabled={judge.running} wide />
+          </label>
+        </div>
+        <label className="flex items-center gap-2 text-[13px] text-fg-muted">
+          <input
+            type="checkbox"
+            checked={dryRun}
+            onChange={(e) => setDryRun(e.target.checked)}
+            disabled={judge.running}
+            className="size-4 accent-(--accent)"
+          />
+          Dry run: judge without posting on-chain
+        </label>
+        {missingKey && <p className="text-[13px] text-negative">Save a judge API key above to use the hosted judge.</p>}
+        <div className="flex flex-wrap items-center gap-3">
+          {judge.running ? (
+            <Button variant="outline" onClick={() => act("judge", () => post("/proc/stop", { name: "judge" }))}>
+              <IconStop /> Stop judge
+            </Button>
+          ) : (
+            <Button
+              variant="accent"
+              loading={busy === "judge"}
+              disabled={missingKey || (busy !== null && busy !== "judge")}
+              onClick={() =>
+                act("judge", () =>
+                  post("/proc/start", { name: "judge", opts: { judges, maxTicks, tickMs: tickSeconds * 1000, dryRun } }),
+                )
+              }
+            >
+              <IconPlay />
+              {maxTicks === 0 ? "Start judge" : `Run ${maxTicks} ${maxTicks === 1 ? "tick" : "ticks"}`}
+            </Button>
+          )}
+          {!judge.running && judge.exitCode !== null && judge.exitCode !== 0 && (
+            <span className="text-[13px] text-negative">The judge exited with code {judge.exitCode}. Its log says why.</span>
+          )}
+        </div>
+        {error && <p className="text-[13px] text-negative">{error}</p>}
       </Card>
     </section>
   );
@@ -499,6 +632,7 @@ function TickLogic({ status, stream }: { status: Status; stream: LiveStreamView 
             </select>
           )
         }
+        subtitle="One tick, from what the judges read to what it pays"
       >
         How p was decided
       </SectionTitle>
@@ -623,7 +757,7 @@ function Tests({ status }: { status: Status }) {
   const passed = results.filter((r) => r.status === "pass").length;
   return (
     <section>
-      <SectionTitle action={results.length > 0 && <span className="nums text-[13px] text-fg-subtle">{passed}/{results.length}</span>}>
+      <SectionTitle subtitle={results.length > 0 ? `${passed} of ${results.length} passing` : "The demo repo's suite"}>
         Tests
       </SectionTitle>
       {results.length === 0 ? (
@@ -670,6 +804,7 @@ function Logs({ status }: { status: Status }) {
             />
           </div>
         }
+        subtitle="Processes started from this page"
       >
         Logs
       </SectionTitle>

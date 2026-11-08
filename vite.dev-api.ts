@@ -4,8 +4,11 @@
 //   POST /api/dev/agent        { cmd }
 //   POST /api/dev/proc/start   { name, opts }
 //   POST /api/dev/proc/stop    { name }
+//   POST /api/dev/key          { provider, key, url?, model? }   saves the judge API key to .env.local
+//   POST /api/dev/key/check                                      one free GET /v1/models with the saved key
+//   POST /api/dev/key/clear
 import { spawn, type ChildProcess } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { join } from "node:path";
 import type { Plugin } from "vite";
@@ -13,7 +16,39 @@ import type { Plugin } from "vite";
 const ROOT = import.meta.dirname;
 const TSX = join(ROOT, "node_modules/.bin/tsx");
 const AGENT_CMDS = new Set(["reset", "step", "break", "unbreak", "inject", "cheat"]);
-const JUDGE_SETS = new Set(["laya-api,laya-api", "laya,laya-alt", "jev,laya", "jev,laya-api"]);
+const JUDGE_SETS = new Set(["laya-api,laya-api", "laya,laya-alt", "laya-api,laya"]);
+const ENV_FILE = join(ROOT, ".env.local");
+const KEY_VARS = ["JEV_API_KEY", "JEV_URL", "JEV_MODEL"] as const;
+const PROVIDERS: Record<string, { url: string; model: string; label: string }> = {
+  "laya-ai": { url: "https://api.laya-ai.com/v1/systemone", model: "laya", label: "Hosted Laya (laya-ai.com)" },
+  typesafe: { url: "https://api.typesafe.ai/v1/systemone", model: "jev-latest", label: "TypeSafe Jev" },
+};
+
+function readEnv(): Record<string, string> {
+  if (!existsSync(ENV_FILE)) return {};
+  const out: Record<string, string> = {};
+  for (const line of readFileSync(ENV_FILE, "utf8").split("\n")) {
+    const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
+    if (m) out[m[1]] = m[2];
+  }
+  return out;
+}
+
+/** Rewrites only the judge variables in .env.local; every other line is kept as it was. */
+function writeKeyVars(values: Partial<Record<(typeof KEY_VARS)[number], string>> | null) {
+  const lines = existsSync(ENV_FILE) ? readFileSync(ENV_FILE, "utf8").split("\n") : [];
+  const kept = lines.filter((l) => l.trim() && !KEY_VARS.some((k) => l.startsWith(`${k}=`)));
+  const added = values ? KEY_VARS.filter((k) => values[k]).map((k) => `${k}=${values[k]}`) : [];
+  writeFileSync(ENV_FILE, [...kept, ...added].join("\n") + "\n", { mode: 0o600 });
+}
+
+function keyStatus() {
+  const env = readEnv();
+  const key = env.JEV_API_KEY ?? "";
+  const url = env.JEV_URL ?? PROVIDERS.typesafe.url;
+  const provider = Object.entries(PROVIDERS).find(([, p]) => p.url === url)?.[0] ?? "custom";
+  return { set: key.length > 0, last4: key.slice(-4), url, model: env.JEV_MODEL ?? "jev-latest", provider };
+}
 const LOG_LINES = 200;
 
 type Proc = {
@@ -125,7 +160,7 @@ function status() {
     stream: readJson(join(ROOT, "judge/stream.json")),
     promise: readJson(join(ROOT, "judge/promise.json")),
     ticks: ticks(),
-    hasApiKey: /JEV_API_KEY=\S+/.test(existsSync(join(ROOT, ".env.local")) ? readFileSync(join(ROOT, ".env.local"), "utf8") : ""),
+    apiKey: keyStatus(),
     now: Date.now(),
   };
 }
@@ -187,6 +222,54 @@ export function devApi(): Plugin {
               );
             } else return send(res, 400, { error: `unknown process ${name}` });
             return send(res, 200, { ok: true });
+          }
+
+          if (req.url === "/key") {
+            const provider = String(b.provider ?? "");
+            const key = String(b.key ?? "").trim();
+            const preset = PROVIDERS[provider];
+            const url = preset ? preset.url : String(b.url ?? "").trim();
+            const model = preset ? preset.model : String(b.model ?? "").trim();
+            if (!/^[A-Za-z0-9_.-]{8,200}$/.test(key)) return send(res, 400, { error: "That doesn't look like an API key" });
+            if (!/^https:\/\/[A-Za-z0-9.-]+(:\d+)?\/[A-Za-z0-9/_.-]*$/.test(url))
+              return send(res, 400, { error: "The endpoint must be an https URL" });
+            if (!/^[A-Za-z0-9_.:-]{1,64}$/.test(model)) return send(res, 400, { error: "Enter a model name" });
+            writeKeyVars({ JEV_API_KEY: key, JEV_URL: url, JEV_MODEL: model });
+            return send(res, 200, { ok: true, apiKey: keyStatus() });
+          }
+
+          if (req.url === "/key/clear") {
+            writeKeyVars(null);
+            return send(res, 200, { ok: true, apiKey: keyStatus() });
+          }
+
+          if (req.url === "/key/check") {
+            const env = readEnv();
+            if (!env.JEV_API_KEY) return send(res, 200, { ok: false, message: "No key saved" });
+            // Listing models costs no judge calls; the endpoint sits next to /systemone.
+            const modelsUrl = (env.JEV_URL ?? PROVIDERS.typesafe.url).replace(/\/systemone\/?$/, "/models");
+            try {
+              const r = await fetch(modelsUrl, {
+                headers: { authorization: `Bearer ${env.JEV_API_KEY}` },
+                signal: AbortSignal.timeout(8_000),
+              });
+              if (r.ok) {
+                const body = (await r.json().catch(() => null)) as { data?: { id: string }[] } | null;
+                const ids = body?.data?.map((m) => m.id) ?? [];
+                const model = env.JEV_MODEL ?? "";
+                const message =
+                  ids.length && model && !ids.includes(model)
+                    ? `Key works, but this endpoint has no model "${model}"`
+                    : "Key works";
+                return send(res, 200, { ok: ids.length === 0 || !model || ids.includes(model), message });
+              }
+              return send(res, 200, {
+                ok: false,
+                message: r.status === 401 || r.status === 403 ? "The endpoint rejected this key" : `The endpoint answered ${r.status}`,
+              });
+            } catch (err) {
+              return send(res, 200, { ok: false, message: `Couldn't reach the endpoint: ${err instanceof Error ? err.message : err}` });
+            }
           }
 
           if (req.url === "/proc/stop") {

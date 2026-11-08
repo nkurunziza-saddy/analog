@@ -111,13 +111,42 @@ export function Spinner({ className }: { className?: string }) {
 
 // ---------------------------------------------------------------- sections
 
-export function SectionTitle({ children, action }: { children: ReactNode; action?: ReactNode }) {
+/**
+ * A heading as two lines at one size: the title in ink, the subtitle muted beneath it.
+ * No eyebrows or labels above it.
+ */
+export function Heading({
+  title,
+  subtitle,
+  size = "section",
+  action,
+  as: Tag = size === "hero" ? "h1" : size === "page" ? "h1" : "h2",
+}: {
+  title: ReactNode;
+  subtitle?: ReactNode;
+  size?: "hero" | "page" | "section";
+  action?: ReactNode;
+  as?: "h1" | "h2" | "h3";
+}) {
+  const type = {
+    hero: "text-[40px] leading-[1.1] tracking-(--tracking-display) md:text-[56px]",
+    page: "text-[26px] leading-[1.25] tracking-(--tracking-tighter)",
+    section: "text-[17px] leading-[1.35] tracking-tight",
+  }[size];
   return (
-    <div className="mb-2.5 flex items-baseline justify-between gap-3 px-1">
-      <h2 className="text-[13px] font-medium tracking-tight text-fg-muted">{children}</h2>
+    <div className={cn("flex flex-wrap items-end justify-between gap-x-4 gap-y-3", size === "section" && "mb-3 px-1")}>
+      <Tag className={cn("min-w-0", size !== "section" && "text-balance", type)}>
+        <span className="block font-medium text-fg">{title}</span>
+        {subtitle && <span className="block font-normal text-fg-muted">{subtitle}</span>}
+      </Tag>
       {action}
     </div>
   );
+}
+
+/** A section heading over a card. */
+export function SectionTitle({ children, subtitle, action }: { children: ReactNode; subtitle?: ReactNode; action?: ReactNode }) {
+  return <Heading title={children} subtitle={subtitle} action={action} />;
 }
 
 /** A raised surface inside a soft tinted frame. */

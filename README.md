@@ -103,7 +103,7 @@ pnpm worker:agent step                         # 4. drive the agent
 
 Any real agent can edit `worker/repo` instead; the judge only sees measured test results.
 
-**Dev console.** With `pnpm dev` running, open `/dev` to do all of the above without a terminal: start and stop the test runner and the judge (with a tick limit, so metered calls stay counted), trigger every agent command, watch each pipeline stage go live, and see for any tick exactly what the judges read, each answer, the product, the min, the hash and what it pays. The control API exists only on the dev server.
+**Dev console.** With `pnpm dev` running, open `/dev` to do all of the above without a terminal. Paste a hosted Laya (laya-ai.com) or TypeSafe Jev key under *Judge API key*; it's saved to `.env.local` and checked with a free call. Then: start and stop the test runner and the judge (with a tick limit, so metered calls stay counted), trigger every agent command, watch each pipeline stage go live, and see for any tick exactly what the judges read, each answer, the product, the min, the hash and what it pays. The control API exists only on the dev server.
 
 **Judges.** The default pair is local Laya asked two different question sets (`JUDGES=laya,laya-alt`). For hosted Laya, put `JEV_URL=https://api.laya-ai.com/v1/systemone`, `JEV_MODEL=laya` and `JEV_API_KEY` in `.env.local` and run `JUDGES=laya-api,laya-api pnpm judge` (two calls per tick). With a TypeSafe key, `JEV_API_KEY=… JUDGES=jev,laya pnpm judge` makes Jev judge A. `DRY_RUN=1 pnpm judge` judges without posting. `LAYA_MODEL_DIR` points at a local ONNX bundle instead of downloading.
 

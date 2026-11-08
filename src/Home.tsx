@@ -5,7 +5,7 @@ import { short, since, tokens } from "./format";
 import { useMintInfo, useStreams, type StreamRow } from "./platform";
 import { Link } from "./router";
 import { isStale, projectEarned, STATUS_CANCELLED, useNow } from "./stream";
-import { buttonClass, Card, Empty, IconPulse, Pill, SectionTitle, Segmented, type Tone } from "./ui";
+import { buttonClass, Card, Empty, Heading, IconPulse, Pill, Segmented, type Tone } from "./ui";
 
 export function Home() {
   const { wallet, status } = useWalletConnection();
@@ -21,15 +21,16 @@ function YourStreams({ me }: { me: Address }) {
 
   return (
     <div className="flex flex-col gap-8">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-[13px] text-fg-muted">Your streams</p>
-          <p className="text-[19px] font-medium tracking-tight">Money that follows the work</p>
-        </div>
-        <Link href="/new" className={buttonClass({ size: "md" })}>
-          New stream
-        </Link>
-      </header>
+      <Heading
+        size="page"
+        title="Your streams"
+        subtitle="Money that follows the work"
+        action={
+          <Link href="/new" className={buttonClass({ size: "md" })}>
+            New stream
+          </Link>
+        }
+      />
 
       <section>
           <div className="mb-3 w-64">
@@ -74,16 +75,11 @@ function Landing() {
   const { rows } = useStreams(null, 15_000);
   return (
     <div className="flex flex-col gap-24 md:gap-32">
-      <section className="flex max-w-[640px] flex-col gap-6 pt-6 md:pt-14">
-        <Pill tone="accent" dot className="self-start">
-          Live on Solana devnet
-        </Pill>
-        <h1 className="text-[40px] leading-[1.08] font-medium tracking-(--tracking-display) text-balance md:text-[52px]">
-          Pay for work by the second, at the rate it's being done right.
-        </h1>
+      <section className="flex max-w-[880px] flex-col gap-6 pt-6 md:pt-14">
+        <Heading size="hero" title="Meet Analog" subtitle="Contracts that pay by the second, as the work is judged" />
         <p className="max-w-[52ch] text-[16px] leading-[1.55] text-pretty text-fg-muted">
-          Contracts were all or nothing because judging work was expensive. Analog streams tokens to a worker and two AI
-          judges score the work every few seconds. Money speeds up when the work is on spec and slows when it isn't.
+          Contracts were all or nothing because judging work was expensive. Now two AI judges score the work every few
+          seconds, and money flows at the rate they believe it's on spec. Live on Solana devnet.
         </p>
         <div className="flex flex-wrap gap-2">
           <Link href="/new" className={buttonClass({ size: "lg" })}>
@@ -98,17 +94,12 @@ function Landing() {
       </section>
 
       <section className="flex flex-col gap-6">
-        <div className="max-w-[560px]">
-          <p className="text-[13px] font-medium text-accent">How it works</p>
-          <h2 className="mt-2 text-[32px] leading-[1.15] font-medium tracking-(--tracking-tighter)">
-            One promise, judged continuously
-          </h2>
-        </div>
+        <Heading size="page" as="h2" title="How it works" subtitle="One promise, judged continuously" />
         <HowItWorks />
       </section>
 
       <section className="flex flex-col gap-4">
-        <SectionTitle>Streams on devnet</SectionTitle>
+        <Heading size="page" as="h2" title="Streams on devnet" subtitle="Every stream on the program, live" />
         {rows === null ? (
           <Empty icon={<IconPulse />} title="Reading devnet">
             Looking up every stream on the program.
