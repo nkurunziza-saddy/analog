@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { address, isAddress } from "@solana/kit";
-import { isStale, projectEarned, STATUS_CANCELLED, useNow, useStream } from "./stream";
+import { FlowDiagram } from "./FlowDiagram";
+import { useNow, useStream } from "./stream";
 import {
   Button,
   Card,
@@ -90,11 +91,6 @@ async function post(path: string, body: unknown): Promise<{ error?: string; outp
 
 const EXPLORER = "https://explorer.solana.com";
 
-function ago(seconds: number) {
-  if (seconds < 60) return `${Math.max(0, Math.round(seconds))}s ago`;
-  if (seconds < 3600) return `${Math.round(seconds / 60)}m ago`;
-  return `${Math.round(seconds / 3600)}h ago`;
-}
 
 // ---------------------------------------------------------------- page
 
@@ -123,7 +119,7 @@ export function DevPage() {
 
       {status && (
         <>
-          <Pipeline status={status} now={now} stream={stream} />
+          <Workflow status={status} now={now} stream={stream} />
           <div className="grid gap-8 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start lg:gap-10">
             <div className="flex flex-col gap-8">
               <ApiKeyCard status={status} reload={reload} />
@@ -162,83 +158,18 @@ function ProcPills({ status }: { status: Status }) {
 
 // ---------------------------------------------------------------- workflow map
 
-type Health = "live" | "idle" | "warn";
-const HEALTH_TONE: Record<Health, Tone> = { live: "accent", idle: "subtle", warn: "negative" };
-const HEALTH_LABEL: Record<Health, string> = { live: "Live", idle: "Idle", warn: "Check" };
-
-function Pipeline({ status, now, stream }: { status: Status; now: number; stream: LiveStreamView }) {
-  const ev = status.evidence;
-  const evAge = ev ? now - Date.parse(ev.updated_at) / 1000 : Infinity;
-  const last = status.ticks[0];
-  const tickAge = last ? now - Date.parse(last.ts) / 1000 : Infinity;
-  const s = stream?.data;
-  const earned = s ? projectEarned(s, now) : 0;
-  const decimals = stream?.mint.decimals ?? 6;
-  const stale = s ? isStale(s, now) : true;
-  const cancelled = s?.status === STATUS_CANCELLED;
-  const note = ev?.agent_note?.text ?? "";
-  const gamed = ev && (ev.tests.skipped > 0 || (ev.diff?.test_files_changed ?? 0) > 0);
-
-  const stages: { title: string; health: Health; value: string; detail: string }[] = [
-    {
-      title: "Agent",
-      health: status.procs.auto.running ? "live" : "idle",
-      value: status.procs.auto.running ? "Fixing on a timer" : "Waiting",
-      detail: note ? note.replace(/^\d\d:\d\d:\d\d /, "") : "No notes yet",
-    },
-    {
-      title: "Test runner",
-      health: evAge < 6 ? "live" : ev ? "warn" : "idle",
-      value: ev ? `${ev.tests.passed}/${ev.tests.total} passing` : "No results",
-      detail: ev ? (evAge < 6 ? `Ran ${ago(evAge)}` : `Stopped ${ago(evAge)}`) : "Start the test runner",
-    },
-    {
-      title: "Evidence",
-      health: !ev ? "idle" : gamed ? "warn" : "live",
-      value: ev ? `${ev.tests.failed} failing · ${ev.tests.skipped} skipped` : "None",
-      detail: gamed ? "Tests skipped or edited" : "Agent notes are left out",
-    },
-    {
-      title: "Judges",
-      health: status.procs.judge.running ? "live" : "idle",
-      value: last ? last.verdicts.map((v) => v.p.toFixed(2)).join(" · ") : "No verdicts",
-      detail: status.procs.judge.running ? "Ticking" : last ? `Last verdict ${ago(tickAge)}` : "Start the judge",
-    },
-    {
-      title: "Chain",
-      health: last?.sig && tickAge < 20 ? "live" : "idle",
-      value: last ? `p = ${(last.pBps / 10_000).toFixed(3)}` : "No ticks",
-      detail: last?.sig ? `post_tick ${ago(tickAge)}` : last ? "Dry run, not posted" : "Both judges sign",
-    },
-    {
-      title: "Stream",
-      health: !s || cancelled || stale ? "idle" : "live",
-      value: s ? `${(earned / 10 ** decimals).toFixed(4)} earned` : "No stream",
-      detail: !s ? "Run create-stream" : cancelled ? "Cancelled" : stale ? "Paused, judge silent" : "Paying",
-    },
-  ];
-
+function Workflow({ status, now, stream }: { status: Status; now: number; stream: LiveStreamView }) {
   return (
     <section>
-      <SectionTitle subtitle="From the agent's edit to the money it moves">Workflow</SectionTitle>
-      <ol className="grid gap-2 rounded-[20px] bg-surface p-1 sm:grid-cols-3 lg:grid-cols-6">
-        {stages.map((st, i) => (
-          <li key={st.title} className="flex min-w-0 flex-col gap-2 rounded-2xl bg-raised p-3.5 shadow-card">
-            <div className="flex items-center justify-between gap-2">
-              <span className="truncate text-[12px] text-fg-muted">
-                {i + 1} · {st.title}
-              </span>
-              <Pill tone={HEALTH_TONE[st.health]} live={st.health === "live"} className="h-5 px-2 text-[11px]">
-                {HEALTH_LABEL[st.health]}
-              </Pill>
-            </div>
-            <span className="nums truncate text-[15px] font-medium">{st.value}</span>
-            <span className="truncate text-[12px] text-fg-subtle" title={st.detail}>
-              {st.detail}
-            </span>
-          </li>
-        ))}
-      </ol>
+      <SectionTitle subtitle="From the agent's edit to the money it moves. Arrows move while data flows.">How it flows</SectionTitle>
+      <FlowDiagram
+        now={now}
+        autoRunning={status.procs.auto.running}
+        judgeRunning={status.procs.judge.running}
+        evidence={status.evidence}
+        lastTick={status.ticks[0] ?? null}
+        stream={stream}
+      />
     </section>
   );
 }

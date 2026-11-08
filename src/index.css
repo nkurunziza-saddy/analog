@@ -164,3 +164,17 @@
     animation: none;
   }
 }
+
+/* A live edge in the flow diagram: dashes travel along it. */
+@keyframes flow {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+@utility flow {
+  stroke-dasharray: 5 5;
+  animation: flow 1s linear infinite;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
